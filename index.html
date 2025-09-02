@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeptiPlix - আপনার প্রিয় মুভি দেখুন</title>
+    
+    <!-- Tailwind CSS from CDN for rapid UI development -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter for a modern look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons for clean and modern icons -->
+    <script src="https://unpkg.com/lucide-react@0.292.0/dist/lucide-react.js"></script>
+    
+    <style>
+        /* Custom styles and animations */
+        :root {
+            --primary-color: #e50914; /* Netflix Red for accent */
+            --dark-bg: #101010;
+            --card-bg: #181818;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark-bg);
+            color: #f5f5f5;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--dark-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .slide-in-right {
+            animation: slideInRight 0.3s ease-out forwards;
+        }
+
+        @keyframes slideOutRight {
+            from { transform: translateX(0); }
+            to { transform: translateX(100%); }
+        }
+        .slide-out-right {
+            animation: slideOutRight 0.3s ease-out forwards;
+        }
+
+        /* Helper class to prevent scrolling when a modal is open */
+        .no-scroll {
+            overflow: hidden;
+        }
+
+        /* Lazy-load placeholder */
+        .lazy-thumbnail {
+            background-color: #2a2a2a;
+        }
+
+        /* Live search highlight */
+        .highlight {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0 2px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-black">
+
+    <!-- Main Application Wrapper -->
+    <div id="app-wrapper" class="min-h-screen">
+
+        <!-- Header -->
+        <header class="bg-black bg-opacity-80 backdrop-blur-sm sticky top-0 z-40 p-4 shadow-lg shadow-black/20">
+            <div class="container mx-auto flex justify-between items-center">
+                <a href="#" class="text-2xl font-bold text-red-600 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clapperboard"><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3Z"/><path d="m6.2 5.3 3.1 3.9"/><path d="m12.4 3.6 3.1 4"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+                    <span>DeptiPlix</span>
+                </a>
+                <div class="hidden md:flex flex-grow max-w-md mx-4">
+                    <input type="text" id="search-bar" placeholder="Search movies by title, tags..." class="w-full bg-gray-800 text-white placeholder-gray-500 px-4 py-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-600 transition">
+                </div>
+                <button id="hamburger-btn" class="p-2 rounded-md hover:bg-gray-800 transition md:hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+                </button>
+            </div>
+             <div class="md:hidden mt-4">
+                <input type="text" id="search-bar-mobile" placeholder="Search movies..." class="w-full bg-gray-800 text-white placeholder-gray-500 px-4 py-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-600 transition">
+            </div>
+        </header>
+
+        <!-- Side Drawer/Menu (for mobile) -->
+        <div id="side-drawer" class="fixed top-0 right-0 h-full w-72 bg-gray-900 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="p-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold">Filter & Menu</h2>
+                    <button id="close-drawer-btn" class="p-2 rounded-full hover:bg-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <div id="genre-filters-mobile">
+                    <h3 class="font-semibold text-gray-400 mb-2">Genres</h3>
+                    <!-- Genre tags will be dynamically inserted here -->
+                </div>
+                <div class="mt-6 border-t border-gray-700 pt-4">
+                     <a href="#" id="admin-login-link-mobile" class="block w-full text-left px-4 py-2 rounded-md hover:bg-gray-800 transition">Admin Panel</a>
+                </div>
+            </div>
+        </div>
+        <div id="drawer-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden"></div>
+
+        <!-- Main Content -->
+        <main class="container mx-auto p-4">
+            <!-- Featured Movie Section -->
+            <section id="featured-movie" class="mb-12 rounded-2xl overflow-hidden relative min-h-[50vh] flex items-end p-8 text-white shadow-2xl shadow-black/50">
+                <!-- Content dynamically inserted here -->
+            </section>
+            
+            <!-- Desktop Genre Filters -->
+            <section class="hidden md:flex items-center gap-2 mb-8 flex-wrap" id="genre-filters-desktop">
+                <h3 class="font-semibold text-gray-400 mr-2">Filter by Genre:</h3>
+                 <!-- Genre tags will be dynamically inserted here -->
+            </section>
+
+            <!-- Movie Gallery -->
+            <section>
+                <h2 class="text-3xl font-bold mb-6">All Movies</h2>
+                <div id="movie-gallery" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                    <!-- Movie cards will be dynamically inserted here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="text-center p-8 mt-12 text-gray-500 border-t border-gray-800">
+            <p>&copy; 2025 MovieFlix. All rights reserved.</p>
+            <p class="text-xs mt-2">Legal Disclaimer: This is a demo site. Do not republish or download copyrighted content without explicit permission from the owner.</p>
+        </footer>
+
+    </div>
+
+    <!-- Modals -->
+    <!-- Video Player Modal -->
+    <div id="video-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 hidden">
+        <div class="w-full max-w-4xl bg-gray-900 rounded-2xl shadow-xl overflow-hidden relative fade-in">
+            <button id="close-video-modal" class="absolute top-3 right-3 text-white bg-black bg-opacity-50 rounded-full p-2 z-10 hover:bg-opacity-75 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <div class="aspect-w-16 aspect-h-9">
+                <iframe id="youtube-player" src="" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <div class="p-6">
+                <h3 id="modal-movie-title" class="text-2xl font-bold"></h3>
+                <p id="modal-movie-description" class="text-gray-400 mt-2"></p>
+                <div id="modal-download-section" class="mt-4 hidden">
+                    <a href="#" id="modal-download-link" target="_blank" class="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download Movie
+                    </a>
+                    <p class="text-xs text-gray-500 mt-2">Note: Download is only available for owner-provided or licensed files.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Login Modal -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 p-8 rounded-2xl shadow-xl w-full max-w-sm fade-in">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Admin Login</h2>
+                <button id="close-admin-login-modal" class="p-2 rounded-full hover:bg-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <form id="admin-login-form">
+                <div class="mb-4">
+                    <label for="admin-password" class="block mb-2 text-sm font-medium text-gray-400">Password</label>
+                    <input type="password" id="admin-password" class="w-full bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600" required>
+                </div>
+                <button type="submit" class="w-full bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-bold">Login</button>
+                <p id="login-error" class="text-red-500 text-sm mt-2 text-center"></p>
+                <p class="text-xs text-gray-500 mt-4"><strong>Demo Note:</strong> For production, use server-side authentication. Do not store passwords in frontend code.</p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="admin-panel-modal" class="fixed inset-0 bg-black bg-opacity-90 z-50 hidden overflow-y-auto">
+        <div class="bg-gray-900 min-h-full w-full max-w-4xl mx-auto p-6 md:p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold">Admin Panel</h2>
+                <button id="close-admin-panel-modal" class="p-2 rounded-full hover:bg-gray-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <button id="add-movie-btn" class="mb-6 w-full md:w-auto bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition font-bold flex items-center justify-center gap-2">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Add New Movie
+            </button>
+            <div id="admin-movie-list" class="space-y-4">
+                <!-- Admin movie list items will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit Movie Modal -->
+    <div id="edit-movie-modal" class="fixed inset-0 bg-black bg-opacity-90 z-[60] hidden overflow-y-auto">
+        <div class="bg-gray-800 min-h-full w-full max-w-2xl mx-auto p-6 md:p-8">
+            <form id="edit-movie-form">
+                <input type="hidden" id="edit-movie-id">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="edit-modal-title" class="text-3xl font-bold">Add Movie</h2>
+                    <button type="button" id="close-edit-modal-btn" class="p-2 rounded-full hover:bg-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label for="movie-title" class="block mb-1 text-sm text-gray-400">Title</label>
+                        <input type="text" id="movie-title" class="w-full bg-gray-700 rounded-lg p-2 focus:ring-red-500 focus:outline-none focus:ring-2" required>
+                    </div>
+                     <div>
+                        <label for="movie-youtube" class="block mb-1 text-sm text-gray-400">YouTube Video Link or ID</label>
+                        <input type="text" id="movie-youtube" class="w-full bg-gray-700 rounded-lg p-2" required>
+                    </div>
+                    <div>
+                        <label for="movie-description" class="block mb-1 text-sm text-gray-400">Description</label>
+                        <textarea id="movie-description" rows="3" class="w-full bg-gray-700 rounded-lg p-2"></textarea>
+                    </div>
+                     <div>
+                        <label for="movie-thumbnail" class="block mb-1 text-sm text-gray-400">Thumbnail URL</label>
+                        <input type="text" id="movie-thumbnail" class="w-full bg-gray-700 rounded-lg p-2" required>
+                         <p class="text-xs text-gray-500 mt-1">PROD Note: Replace this with a file upload field.</p>
+                    </div>
+                    <div>
+                        <label for="movie-genre" class="block mb-1 text-sm text-gray-400">Genre</label>
+                        <select id="movie-genre" class="w-full bg-gray-700 rounded-lg p-2">
+                            <!-- Options dynamically populated -->
+                        </select>
+                    </div>
+                     <div>
+                        <label for="movie-tags" class="block mb-1 text-sm text-gray-400">Tags (comma separated)</label>
+                        <input type="text" id="movie-tags" class="w-full bg-gray-700 rounded-lg p-2" placeholder="e.g. sci-fi, space, alien">
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <input type="checkbox" id="movie-is-owner" class="h-5 w-5 bg-gray-700 rounded text-red-600 focus:ring-red-500">
+                        <label for="movie-is-owner" class="text-sm text-gray-300">Owner uploaded (enables download)</label>
+                    </div>
+                    <div id="download-url-wrapper" class="hidden">
+                        <label for="movie-download-url" class="block mb-1 text-sm text-gray-400">Download URL</label>
+                        <input type="text" id="movie-download-url" class="w-full bg-gray-700 rounded-lg p-2">
+                    </div>
+                </div>
+                 <div class="mt-8 flex gap-4">
+                    <button type="submit" class="flex-1 bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition">Save Movie</button>
+                    <button type="button" id="cancel-edit-btn" class="flex-1 bg-gray-600 text-white font-bold py-3 rounded-lg hover:bg-gray-500 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Custom Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black bg-opacity-90 z-[70] flex items-center justify-center p-4 hidden">
+        <div class="bg-gray-900 p-8 rounded-2xl shadow-xl w-full max-w-sm fade-in">
+            <h3 id="confirm-title" class="text-xl font-bold text-center">Are you sure?</h3>
+            <p id="confirm-message" class="text-gray-400 text-center mt-2 mb-6">You won't be able to revert this!</p>
+            <div class="flex justify-center gap-4">
+                <button id="confirm-yes-btn" class="bg-red-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-red-700">Yes</button>
+                <button id="confirm-no-btn" class="bg-gray-600 text-white font-bold py-2 px-8 rounded-lg hover:bg-gray-500">No</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- DATA STORE ---
+    // In a real application, this data would come from a REST API.
+    // For this demo, we use a local array of objects.
+    let movies = [
+        {
+            id: 1,
+            title: "Tungipara'r Miya Bhai",
+            description: "A Bangladeshi biographical feature film. The film is directed by Selim Khan and produced by his daughter Pinky Akter.",
+            genre: "Biographical",
+            youtubeId: "ZbC5jC15lS4",
+            thumbnail: "https://i.ytimg.com/vi/ZbC5jC15lS4/hq720.jpg",
+            tags: ["biography", "bangladesh", "history"],
+            isOwnerUploaded: true,
+            downloadUrl: "#", // Placeholder
+        },
+        {
+            id: 2,
+            title: "Debi: Misir Ali Prothombar",
+            description: "A 2018 Bangladeshi supernatural horror film based on Humayun Ahmed's novel of the same name. It is directed by Anam Biswas, starring Chanchal Chowdhury as Misir Ali.",
+            genre: "Horror",
+            youtubeId: "JRXBw5e5gRc",
+            thumbnail: "https://i.ytimg.com/vi/JRXBw5e5gRc/maxresdefault.jpg",
+            tags: ["supernatural", "horror", "mystery"],
+            isOwnerUploaded: false,
+            downloadUrl: null,
+        },
+        {
+            id: 3,
+            title: "Aynabaji",
+            description: "Ayna is an actor and the prison story of an innocent man. He is a man of many faces. It's a story about a man with a versatile talent of acting and his lonely life.",
+            genre: "Thriller",
+            youtubeId: "rBsoQ2hE-2w",
+            thumbnail: "https://i.ytimg.com/vi/rBsoQ2hE-2w/maxresdefault.jpg",
+            tags: ["crime", "thriller", "drama"],
+            isOwnerUploaded: true,
+            downloadUrl: "#",
+        },
+        {
+            id: 4,
+            title: "Monpura",
+            description: "An innocent man is falsely accused of murder and exiled to a remote island called Monpura. There, he falls in love with the daughter of a local boatman.",
+            genre: "Romance",
+            youtubeId: "J825TfGvzr0",
+            thumbnail: "https://i.ytimg.com/vi/J825TfGvzr0/maxresdefault.jpg",
+            tags: ["romance", "drama", "musical"],
+            isOwnerUploaded: false,
+            downloadUrl: null,
+        },
+        {
+            id: 5,
+            title: "Priyotoma",
+            description: "Priyotoma is a 2023 Bangladeshi romantic action film directed by Himel Ashraf and produced by Arshad Adnan under the banner of Versatile Media.",
+            genre: "Action",
+            youtubeId: "QJz0vj2tQjY",
+            thumbnail: "https://i.ytimg.com/vi/QJz0vj2tQjY/maxresdefault.jpg",
+            tags: ["action", "romance", "bangladeshi"],
+            isOwnerUploaded: false,
+            downloadUrl: null,
+        }
+    ];
+    
+    // --- STATE MANAGEMENT ---
+    let state = {
+        searchTerm: '',
+        activeGenres: [],
+        isAdmin: false,
+    };
+    
+    // Get unique genres for filter buttons
+    const allGenres = [...new Set(movies.map(m => m.genre))];
+
+    // --- DOM SELECTORS ---
+    const gallery = document.getElementById('movie-gallery');
+    const searchBar = document.getElementById('search-bar');
+    const searchBarMobile = document.getElementById('search-bar-mobile');
+    const featuredMovieSection = document.getElementById('featured-movie');
+    const videoModal = document.getElementById('video-modal');
+    const closeVideoModalBtn = document.getElementById('close-video-modal');
+    const youtubePlayer = document.getElementById('youtube-player');
+    const hamburgerBtn = document.getElementById('hamburger-btn');
+    const sideDrawer = document.getElementById('side-drawer');
+    const drawerOverlay = document.getElementById('drawer-overlay');
+    const closeDrawerBtn = document.getElementById('close-drawer-btn');
+    
+    // Admin Modal Selectors
+    const adminLoginLinkMobile = document.getElementById('admin-login-link-mobile');
+    const adminLoginModal = document.getElementById('admin-login-modal');
+    const closeAdminLoginModalBtn = document.getElementById('close-admin-login-modal');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    const adminPanelModal = document.getElementById('admin-panel-modal');
+    const closeAdminPanelModalBtn = document.getElementById('close-admin-panel-modal');
+    const adminMovieList = document.getElementById('admin-movie-list');
+    const addMovieBtn = document.getElementById('add-movie-btn');
+    const editMovieModal = document.getElementById('edit-movie-modal');
+    const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const editMovieForm = document.getElementById('edit-movie-form');
+    
+    // Confirm Modal Selectors
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmYesBtn = document.getElementById('confirm-yes-btn');
+    const confirmNoBtn = document.getElementById('confirm-no-btn');
+
+    // --- DATA PERSISTENCE (DEMO using LocalStorage) ---
+    // PROD: Replace with API calls
+    function loadMoviesFromStorage() {
+        const storedMovies = localStorage.getItem('movieflix_movies');
+        if (storedMovies) {
+            movies = JSON.parse(storedMovies);
+        }
+    }
+    
+    function saveMoviesToStorage() {
+        localStorage.setItem('movieflix_movies', JSON.stringify(movies));
+    }
+
+
+    // --- UTILITY FUNCTIONS ---
+    function getYouTubeID(url) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : url; // Assume it's an ID if no match
+    }
+    
+    function toggleModal(modal, show) {
+        if (show) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('no-scroll');
+        } else {
+            modal.classList.add('hidden');
+            document.body.classList.remove('no-scroll');
+        }
+    }
+    
+    // --- RENDER FUNCTIONS ---
+    function renderMovies() {
+        const filteredMovies = movies.filter(movie => {
+            const titleMatch = movie.title.toLowerCase().includes(state.searchTerm.toLowerCase());
+            const tagsMatch = movie.tags.some(tag => tag.toLowerCase().includes(state.searchTerm.toLowerCase()));
+            const genreMatch = state.activeGenres.length === 0 || state.activeGenres.includes(movie.genre);
+            return (titleMatch || tagsMatch) && genreMatch;
+        });
+
+        gallery.innerHTML = '';
+        if (filteredMovies.length === 0) {
+            gallery.innerHTML = `<p class="col-span-full text-center text-gray-400">No movies found matching your criteria.</p>`;
+            return;
+        }
+
+        filteredMovies.forEach(movie => {
+            const movieCard = `
+                <div class="group relative rounded-2xl overflow-hidden shadow-lg transform hover:-translate-y-2 transition-transform duration-300 fade-in cursor-pointer" data-movie-id="${movie.id}">
+                    <img data-src="${movie.thumbnail}" class="lazy-thumbnail w-full h-full object-cover" alt="${movie.title}">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                    <div class="absolute inset-0 flex flex-col justify-end p-3 md:p-4">
+                        <h3 class="text-white font-bold text-sm md:text-base">${movie.title}</h3>
+                        <p class="text-gray-400 text-xs">${movie.genre}</p>
+                    </div>
+                    <div class="absolute inset-0 bg-black bg-opacity-60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <button class="play-btn bg-red-600 text-white rounded-full h-14 w-14 flex items-center justify-center transform scale-75 group-hover:scale-100 transition-transform">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play ml-1"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            gallery.innerHTML += movieCard;
+        });
+        
+        lazyLoadThumbnails();
+    }
+
+    function renderFeaturedMovie() {
+        if (movies.length === 0) return;
+        const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+        featuredMovieSection.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url(${randomMovie.thumbnail})`;
+        featuredMovieSection.style.backgroundSize = 'cover';
+        featuredMovieSection.style.backgroundPosition = 'center';
+        
+        featuredMovieSection.innerHTML = `
+            <div class="fade-in z-10">
+                <p class="text-red-500 font-semibold">Featured Today</p>
+                <h2 class="text-4xl md:text-6xl font-bold mt-2">${randomMovie.title}</h2>
+                <p class="max-w-xl mt-4 text-gray-300">${randomMovie.description}</p>
+                <button class="play-btn mt-6 bg-red-600 text-white px-8 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-red-700 transition" data-movie-id="${randomMovie.id}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" class="lucide lucide-play"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Play Now
+                </button>
+            </div>
+        `;
+    }
+    
+    function renderGenreFilters() {
+        const filterContainers = [document.getElementById('genre-filters-desktop'), document.getElementById('genre-filters-mobile')];
+        filterContainers.forEach(container => {
+            if (!container) return;
+            
+            let html = '';
+            if(container.id === 'genre-filters-desktop'){
+                html += `<button class="genre-btn px-4 py-1 rounded-full text-sm font-semibold transition ${state.activeGenres.length === 0 ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}" data-genre="all">All</button>`;
+            } else {
+                 html += `<a href="#" class="genre-btn block w-full text-left px-4 py-2 rounded-md transition ${state.activeGenres.length === 0 ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}" data-genre="all">All Genres</a>`;
+            }
+
+            allGenres.forEach(genre => {
+                 const isActive = state.activeGenres.includes(genre);
+                 if(container.id === 'genre-filters-desktop'){
+                     html += `<button class="genre-btn px-4 py-1 rounded-full text-sm font-semibold transition ${isActive ? 'bg-red-600 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700'}" data-genre="${genre}">${genre}</button>`;
+                 } else {
+                     html += `<a href="#" class="genre-btn block w-full text-left px-4 py-2 rounded-md transition ${isActive ? 'bg-red-600 text-white' : 'hover:bg-gray-800'}" data-genre="${genre}">${genre}</a>`;
+                 }
+            });
+            container.innerHTML = (container.id === 'genre-filters-desktop' ? container.firstChild.outerHTML : '') + html;
+        });
+    }
+    
+    function renderAdminMovieList() {
+        adminMovieList.innerHTML = '';
+        movies.forEach(movie => {
+            const item = `
+                <div class="flex items-center justify-between bg-gray-800 p-4 rounded-lg">
+                    <div class="flex items-center gap-4">
+                        <img src="${movie.thumbnail}" class="w-24 h-14 object-cover rounded-md">
+                        <div>
+                            <p class="font-bold">${movie.title}</p>
+                            <p class="text-sm text-gray-400">${movie.genre}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="edit-btn p-2 bg-blue-600 rounded-md hover:bg-blue-700" data-movie-id="${movie.id}">
+                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                        </button>
+                        <button class="delete-btn p-2 bg-red-600 rounded-md hover:bg-red-700" data-movie-id="${movie.id}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `;
+            adminMovieList.innerHTML += item;
+        })
+    }
+    
+    function lazyLoadThumbnails() {
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        const observer = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy-thumbnail');
+                    img.removeAttribute('data-src');
+                    observer.unobserve(img);
+                }
+            });
+        });
+        lazyImages.forEach(img => observer.observe(img));
+    }
+
+    // --- EVENT HANDLERS ---
+    function handleSearch(e) {
+        state.searchTerm = e.target.value;
+        renderMovies();
+    }
+    
+    function handleGenreClick(e) {
+        const target = e.target.closest('.genre-btn');
+        if (!target) return;
+        
+        e.preventDefault();
+        const genre = target.dataset.genre;
+
+        if (genre === 'all') {
+            state.activeGenres = [];
+        } else {
+            const index = state.activeGenres.indexOf(genre);
+            if (index > -1) {
+                state.activeGenres.splice(index, 1);
+            } else {
+                state.activeGenres.push(genre);
+            }
+        }
+        
+        renderGenreFilters();
+        renderMovies();
+    }
+    
+    function handlePlayClick(e) {
+        const target = e.target.closest('[data-movie-id]');
+        if (!target) return;
+
+        const movieId = parseInt(target.dataset.movieId);
+        const movie = movies.find(m => m.id === movieId);
+        if (!movie) return;
+
+        document.getElementById('modal-movie-title').textContent = movie.title;
+        document.getElementById('modal-movie-description').textContent = movie.description;
+        
+        const downloadSection = document.getElementById('modal-download-section');
+        if(movie.isOwnerUploaded && movie.downloadUrl){
+            document.getElementById('modal-download-link').href = movie.downloadUrl;
+            downloadSection.classList.remove('hidden');
+        } else {
+            downloadSection.classList.add('hidden');
+        }
+        
+        // YouTube embed with privacy-enhancing parameters
+        const videoId = getYouTubeID(movie.youtubeId);
+        youtubePlayer.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3`;
+        
+        toggleModal(videoModal, true);
+    }
+    
+    function closeVideoModal() {
+        youtubePlayer.src = ''; // Stop video playback
+        toggleModal(videoModal, false);
+    }
+    
+    function handleAdminLogin(e) {
+        e.preventDefault();
+        const password = document.getElementById('admin-password').value;
+        const loginError = document.getElementById('login-error');
+        
+        // IMPORTANT: This is highly insecure for production.
+        // In a real app, send the password to a server endpoint for validation.
+        if (password === 'abid123') {
+            state.isAdmin = true;
+            sessionStorage.setItem('isAdmin', 'true'); // Demo session persistence
+            toggleModal(adminLoginModal, false);
+            adminLoginForm.reset();
+            loginError.textContent = '';
+            renderAdminMovieList();
+            toggleModal(adminPanelModal, true);
+        } else {
+            loginError.textContent = 'Incorrect password.';
+        }
+    }
+    
+    function handleAdminPanelActions(e) {
+        const editBtn = e.target.closest('.edit-btn');
+        const deleteBtn = e.target.closest('.delete-btn');
+        
+        if (editBtn) {
+            const movieId = parseInt(editBtn.dataset.movieId);
+            const movie = movies.find(m => m.id === movieId);
+            openEditModal(movie);
+        }
+        
+        if (deleteBtn) {
+            const movieId = parseInt(deleteBtn.dataset.movieId);
+            openConfirmModal('Delete Movie', 'Are you sure you want to delete this movie?', () => deleteMovie(movieId));
+        }
+    }
+    
+    function openEditModal(movie = null) {
+        editMovieForm.reset();
+        const modalTitle = document.getElementById('edit-modal-title');
+        const genreSelect = document.getElementById('movie-genre');
+        const downloadUrlWrapper = document.getElementById('download-url-wrapper');
+        const isOwnerCheckbox = document.getElementById('movie-is-owner');
+        
+        genreSelect.innerHTML = allGenres.map(g => `<option value="${g}">${g}</option>`).join('');
+        
+        if (movie) { // Editing existing movie
+            modalTitle.textContent = 'Edit Movie';
+            document.getElementById('edit-movie-id').value = movie.id;
+            document.getElementById('movie-title').value = movie.title;
+            document.getElementById('movie-youtube').value = movie.youtubeId;
+            document.getElementById('movie-description').value = movie.description;
+            document.getElementById('movie-thumbnail').value = movie.thumbnail;
+            genreSelect.value = movie.genre;
+            document.getElementById('movie-tags').value = movie.tags.join(', ');
+            isOwnerCheckbox.checked = movie.isOwnerUploaded;
+            if(movie.isOwnerUploaded){
+                downloadUrlWrapper.classList.remove('hidden');
+                document.getElementById('movie-download-url').value = movie.downloadUrl;
+            } else {
+                 downloadUrlWrapper.classList.add('hidden');
+            }
+        } else { // Adding new movie
+            modalTitle.textContent = 'Add Movie';
+            document.getElementById('edit-movie-id').value = '';
+            downloadUrlWrapper.classList.add('hidden');
+        }
+        
+        isOwnerCheckbox.onchange = () => {
+            downloadUrlWrapper.classList.toggle('hidden', !isOwnerCheckbox.checked);
+        };
+        
+        toggleModal(editMovieModal, true);
+    }
+    
+    function handleEditFormSubmit(e) {
+        e.preventDefault();
+        const id = document.getElementById('edit-movie-id').value;
+        const movieData = {
+            title: document.getElementById('movie-title').value,
+            youtubeId: getYouTubeID(document.getElementById('movie-youtube').value),
+            description: document.getElementById('movie-description').value,
+            thumbnail: document.getElementById('movie-thumbnail').value,
+            genre: document.getElementById('movie-genre').value,
+            tags: document.getElementById('movie-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+            isOwnerUploaded: document.getElementById('movie-is-owner').checked,
+            downloadUrl: document.getElementById('movie-download-url').value
+        };
+
+        if (id) { // Update existing
+            const index = movies.findIndex(m => m.id == id);
+            movies[index] = { ...movies[index], ...movieData };
+        } else { // Add new
+            movieData.id = movies.length > 0 ? Math.max(...movies.map(m => m.id)) + 1 : 1;
+            movies.push(movieData);
+        }
+        
+        saveMoviesToStorage();
+        renderAll();
+        renderAdminMovieList();
+        toggleModal(editMovieModal, false);
+    }
+    
+    function deleteMovie(id) {
+        movies = movies.filter(m => m.id !== id);
+        saveMoviesToStorage();
+        renderAll();
+        renderAdminMovieList();
+    }
+    
+    function openConfirmModal(title, message, onConfirm) {
+        document.getElementById('confirm-title').textContent = title;
+        document.getElementById('confirm-message').textContent = message;
+        
+        confirmYesBtn.onclick = () => {
+            onConfirm();
+            toggleModal(confirmModal, false);
+        };
+        
+        toggleModal(confirmModal, true);
+    }
+
+    // --- DRAWER LOGIC ---
+    function toggleDrawer(show) {
+        if (show) {
+            drawerOverlay.classList.remove('hidden');
+            sideDrawer.classList.remove('translate-x-full');
+            document.body.classList.add('no-scroll');
+        } else {
+            drawerOverlay.classList.add('hidden');
+            sideDrawer.classList.add('translate-x-full');
+            document.body.classList.remove('no-scroll');
+        }
+    }
+
+    // --- INITIALIZATION ---
+    function renderAll() {
+        renderGenreFilters();
+        renderFeaturedMovie();
+        renderMovies();
+    }
+    
+    function init() {
+        loadMoviesFromStorage();
+        
+        // Initial Renders
+        renderAll();
+        
+        // Check for admin session
+        if (sessionStorage.getItem('isAdmin') === 'true') {
+            state.isAdmin = true;
+        }
+
+        // --- EVENT LISTENERS BINDING ---
+        searchBar.addEventListener('input', handleSearch);
+        searchBarMobile.addEventListener('input', handleSearch);
+        
+        document.getElementById('genre-filters-desktop').addEventListener('click', handleGenreClick);
+        document.getElementById('genre-filters-mobile').addEventListener('click', handleGenreClick);
+        
+        gallery.addEventListener('click', handlePlayClick);
+        featuredMovieSection.addEventListener('click', handlePlayClick);
+        closeVideoModalBtn.addEventListener('click', closeVideoModal);
+        
+        // Drawer listeners
+        hamburgerBtn.addEventListener('click', () => toggleDrawer(true));
+        closeDrawerBtn.addEventListener('click', () => toggleDrawer(false));
+        drawerOverlay.addEventListener('click', () => toggleDrawer(false));
+        
+        // Admin listeners
+        adminLoginLinkMobile.addEventListener('click', (e) => {
+            e.preventDefault();
+            toggleDrawer(false);
+            if (state.isAdmin) {
+                renderAdminMovieList();
+                toggleModal(adminPanelModal, true);
+            } else {
+                toggleModal(adminLoginModal, true);
+            }
+        });
+        closeAdminLoginModalBtn.addEventListener('click', () => toggleModal(adminLoginModal, false));
+        adminLoginForm.addEventListener('submit', handleAdminLogin);
+        
+        closeAdminPanelModalBtn.addEventListener('click', () => toggleModal(adminPanelModal, false));
+        addMovieBtn.addEventListener('click', () => openEditModal());
+        adminMovieList.addEventListener('click', handleAdminPanelActions);
+        
+        closeEditModalBtn.addEventListener('click', () => toggleModal(editMovieModal, false));
+        cancelEditBtn.addEventListener('click', () => toggleModal(editMovieModal, false));
+        editMovieForm.addEventListener('submit', handleEditFormSubmit);
+        
+        // Confirm modal listeners
+        confirmNoBtn.addEventListener('click', () => toggleModal(confirmModal, false));
+    }
+
+    // Start the application
+    init();
+});
+</script>
+
+</body>
+</html>
